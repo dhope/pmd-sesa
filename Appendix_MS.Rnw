@@ -1,0 +1,120 @@
+
+\documentclass[utf8]{frontiers_suppmat} % for all articles
+\usepackage{url,hyperref,lineno,microtype}
+\usepackage[onehalfspacing]{setspace}
+
+\begin{document}
+\onecolumn
+\firstpage{1}
+
+\title[Supplementary Material]{{\helveticaitalic{Supplementary Material}}}
+
+\maketitle
+
+<<setup-sesa, echo=F, message=F, warning=F, cahce=F>>=
+library(tidyverse)
+library(knitr)
+library(xtable)
+library(cowplot) 
+require(lubridate)
+set_parent("HopeLankSmithPaquetYdenberg_SESA.Rnw")
+opts_chunk$set(echo = F, # Do NOT repeat code in final document
+                message = F, # Do NOT print R messages in document
+                warning = F, # Do NOT pring warnings
+                cache = T, # Cache runs
+                dev = "pdf", #"CairoPNG", # Uses Cairo png instead of pdf for images
+                dpi = 300,
+                out.width = "\\textwidth", 
+                fig.align = 'center'#,
+                 # cache.path = './cache/'
+             )
+# rm(calculateDstats)
+
+# numbers >= 10^5 will be denoted in scientific
+# notation, and rounded to 2 digits
+options(scipen = 1, digits = 2)
+
+@
+
+ 
+
+<<sesa-functions, cache=F, include=F>>=
+source('../Rscripts/dstats.r', chdir=T)
+source('../Rscripts/covariates.r', chdir = T)
+source('../Rscripts/analysisFunction_acss.r', chdir=T)
+if(!exists("includeapp")) includeapp <- F 
+select <- dplyr::select
+@
+
+
+<<sesa-analysis, cache=T, include=T, child="Analysis_Code.rnw", runagain=file.info("Analysis_Code.rnw")$mtime>>=
+@
+
+<<appendices,child="Appendix_SESA.Rnw", eval=T,runagain=file.info("Appendix_SESA.Rnw")$mtime>>=
+@
+
+\section*{}
+<<ass-relax,  fig.width= 8, fig.height = 8, out.width = "\\textwidth", fig.cap = "Intercept and standardized interannual trend estimates with accompanying 95\\% confidence intervals for repeated analyses where the assumptions underlying the priority matching distribution (PMD) index were relaxed. The ``Baseline'' run shows the main results shown from Figure 7. The ``Binned Sites'' analysis separated sites into bins of 0.1, sampled one site from each bin for each year and calculated interannual slopes and intercepts, repeating the process 1000 times. The ``No MAPT or GRAN'' analysis refitted the PMD trend model excluding the two sites exerting the most leverage (Mary's Point and Johnson's Mills; see Table 2). This did not affect the trend, but increased the intercept (i.e. less aggregation). The ``Area Sorted PMD'' run recalculated PMD by sorting by area of habitat rather than the safety index. Informatively, this eliminated the trend altogether, showing that the shift is toward greater safety rather than to larger size. The ``SLR'' simulation explored the result if birds were only responding to reductions in habitat. The ``Dates'' reanalyses clip the dates for inclusion in the analysis by the described percentiles. The ``Danger'' and ``Radius'' analyses recalculate the danger distance or the buffer around the geographic site location by the distance noted.",fig.scap="Results of interannual trends from relaxing the assumptions underlying the priority matching distribution (PMD) index.", include=T>>=
+
+
+# res_x <- br$all %>% group_nest(seed) %>% mutate(mods = map(data, ~lm(aucRatio~yr_centered, data = .x)), res = map(mods, ~broom::tidy(.x, conf.int=T))) %>% select(-mods, -data) %>% unnest(cols = c(res))
+
+# ggplot(res_x, aes(x= term, y= estimate)) + geom_jitter(width = 0.5, height = 0, alpha = 0.5)
+slr <- read_rds(".rds/SLR.rds") %>% filter(mod == "SLR") %>%
+    mutate(runName = "SLR",
+      `97.5 %` = conf.high,
+      `2.5 %` = conf.low)
+yearModels <- read_rds(".rds/assumptionrelaxation.rds")
+# binning_summary <- readRDS("rds_files/binresults.rds")
+# summary_bin <- binningResults$summarybin01 %>% rename(`2.5 %` = q025, `97.5 %` = q975, estimate = meanEst) %>% mutate(runName = "Bins 0.1")
+yrModels.df <-  yearModels %>% mutate(sig = ifelse(p.value < 0.05, 'Yes', 'No')) %>% 
+  # bind_rows(summary_bin) %>% 
+  bind_rows(binningResults) %>%
+  bind_rows(slr) %>%
+  arrange(term) %>%
+  mutate(
+    ModelTerm = ifelse(term == "Yr.st", "Year", "Intercept"),
+    Name = gsub("_", " ", runName),
+    Name = gsub("1k","1km", Name),
+    Name = gsub("5k","5km", Name), 
+    Name_ordered = factor(Name, levels=
+                            rev(c("Baseline", #"Bins 0.1", 
+                              "Binned Sites",
+                              "No MAPT or GRAN", 
+                              "Area Sorted PMD",
+                              "SLR",
+                              "Dates 20 80", 
+                              "Dates 5 95", 
+                              "Dates 25 975", 
+                              "Dates 1 99", 
+                              "All Dates",
+                              "Danger 50m", "Danger 300m", 
+                              "Danger 450m", "Radius 1km", "Radius 5km"))))
+require(cowplot)
+MethodComparePlot <- yrModels.df %>% filter(!runName %in% c("Date_0_20", "Date_80_100")) %>% 
+  mutate(Term = ifelse(ModelTerm == "Year", "Interannual Trend\n(standardized)\n", "Intercept\n(centered)")) %>% 
+  ggplot(aes(Name_ordered, estimate, shape = Term)) + 
+  geom_pointrange(aes(ymin = `2.5 %`, ymax = `97.5 %`)) + #ylim(-0.5,1)+
+  scale_y_continuous(breaks = seq(-0.5, 1, 0.1)) +
+  theme_light()+
+   theme(axis.text.x =  element_text(angle = 45, hjust = 1),
+    panel.grid.major.y = element_blank()) +
+  geom_hline(yintercept = 0, linetype = 2) +
+   labs(x = "Modified PMD trend estimates", y = "Estimate with 95%CI", shape = "")+ coord_flip() 
+MethodComparePlot 
+@
+
+
+
+% #print("Appendices not included") #
+
+\pagebreak[2]
+\subsection*{Code availability}
+
+Code used in this analysis is available at \url{https://github.com/dhope/pmd-sesa}. The packages used in this analysis are cited below. 
+\nocite{*}
+ \bibliographystyle{frontiersinSCNS_ENG_HUMS}
+  \bibliography{packages}
+  \printbibliography
+
+\end{document}

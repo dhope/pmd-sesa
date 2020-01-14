@@ -1,0 +1,607 @@
+\documentclass[utf8]{frontiersSCNS}
+\usepackage{url}
+\usepackage{microtype}
+\usepackage{subcaption}
+\usepackage[onehalfspacing]{setspace}
+% \usepackage{geometry}
+% \usepackage[round]{natbib}
+% \usepackage{graphicx}
+% \usepackage[T1]{fontenc}
+% \usepackage[utf8]{inputenc}
+% \usepackage{authblk}
+\usepackage{lineno}
+\usepackage{amsmath,amssymb,amsthm}
+% \usepackage{multirow} % span in both directions tables
+% \usepackage{array}
+% \usepackage{phaistos}
+\usepackage[pdfborder={0 0 0},colorlinks=false]{hyperref}
+\linenumbers
+
+\DeclareGraphicsExtensions{.png}
+
+% Leave a blank line between paragraphs instead of using \\
+
+
+\def\keyFont{\fontsize{8}{11}\helveticabold }
+\def\firstAuthorLast{Hope {et~al.}} %use et al only if is more than 1 author
+
+% \title{Migrant semipalmated sandpipers (Calidris pusilla) have over four decades steadily shifted towards safer stopover locations}
+
+\def\Authors{David D. Hope\,$^{1,*}$, David B. Lank$^{1}$, Paul A. Smith\,$^{2}$, Julie Paquet,$^{3}$ and Ronald C. Ydenberg$^{1}$}
+
+
+\def\Address{$^{1}$Centre for Wildlife Ecology,
+  Department of Biological Sciences,
+  Simon Fraser University,
+  Burnaby, Canada \\
+$^{2}$Wildlife Research Division,
+Environment and Climate Change Canada,
+Ottawa, Canada \\
+$^{3}$Canadian Wildlife Service,
+Environment and Climate Change Canada,
+Sackville, Canada}
+
+\def\corrAuthor{David Hope}
+
+\def\corrEmail{david.hope@canada.ca}
+
+\begin{document}
+\onecolumn
+\firstpage{1}
+
+\title[Sandpipers shift to safety]{Migrant semipalmated sandpipers (Calidris pusilla) have over four decades steadily shifted towards safer stopover locations} 
+
+\author[\firstAuthorLast ]{\Authors} %This field will be automatically populated
+\address{} %This field will be automatically populated
+\correspondance{} %This field will be automatically populated
+
+<<setup-sesa, echo=F, message=F, warning=F, cahce=F>>=
+library(tidyverse)
+library(knitr)
+library(xtable)
+library(cowplot) 
+require(lubridate)
+library(modelr)
+library(rsample)
+theme_set(theme_cowplot())
+opts_chunk$set(echo = F, # Do NOT repeat code in final document
+                message = F, # Do NOT print R messages in document
+                warning = F, # Do NOT pring warnings
+                cache = T, # Cache runs
+                dev ="CairoPNG", #  "pdf", #Uses Cairo png instead of pdf for images
+                dpi = 300,
+                out.width = "0.5\\textwidth", 
+                fig.align = 'center',
+                cache.path = './cache/'
+             )
+ knit_hooks$set(inline = function(x) {
+      if(is.numeric(x)){
+          return(prettyNum(x, big.mark=","))
+      }else{
+          return(x)
+       }
+   })
+
+# rm(calculateDstats)
+
+# numbers >= 10^5 will be denoted in scientific
+# notation, and rounded to 2 digits
+options(scipen = 1, digits = 2) 
+
+@
+
+<<sesa-functions, cache=F, include=F>>=
+source('../Rscripts/dstats.r', chdir=T)
+source('../Rscripts/covariates.r', chdir = T)
+source('../Rscripts/analysisFunction_acss.r', chdir=T)
+if(!exists("includeapp")) includeapp <- F 
+select <- dplyr::select
+@
+
+
+<<sesa-analysis, cache=T, include=T, child="Analysis_Code.rnw", runagain=file.info("Analysis_Code.rnw")$mtime>>=
+@
+
+
+\maketitle
+
+
+\begin{abstract}
+% \section{Abstract}
+Peregrine falcons (\textit{Falco peregrinus}) have undergone a steady hemisphere-wide recovery since the ban on DDT in 1973, resulting in an ongoing increase in the level of danger posed for migrant birds, such as Arctic-breeding sandpipers. We anticipate that in response migrant semipalmated sandpipers (\textit{Calidris pusilla}) have adjusted migratory behaviour, including a shift in stopover site usage towards locations offering greater safety from falcon predation.  
+
+\Sexpr{ci_PMD <- AUC.results.w.bootstrap.raw %>% group_by(id) %>% summarize(pmd = mean(aucRatio,na.rm=T)) %>% ungroup %>% .[['pmd']] %>% quantile(., probs = c(0.025, 0.975))}
+
+We assessed semipalmated sandpiper stopover usage within the Atlantic Canada Shorebird Survey dataset. Based on \Sexpr{nrow(ACSS_South_Danger_forAnalysis)} surveys (totalling \~{}\Sexpr{sum(ACSS_South_Danger_forAnalysis$SESA.Zeros)/1000000 %>% round(0)}M birds) made during southward migration, 1974 - 2017, at \Sexpr{n_distinct(ACSS_South_Danger_forAnalysis$ID)} stopover locations, we assessed the spatial distribution of site usage in each year (with a `priority matching distribution' index, PMD) in relation to the size (intertidal area) and safety (proportion of a site's intertidal area further than 150m of the shoreline) of each location. The PMD index value is $>$ 1 when usage is concentrated at dangerous locations, 1.0 when usage matches location size, and $<$ 1 when usage is concentrated at safer locations.    
+
+A large majority of migrants were found at the safest sites in all years, however our analysis of the PMD demonstrated that the fraction using safer sites increased over time. In 1974, 80\% of birds were found at the safest 20\% of the sites, while in 2017, this had increased to 97\%. A sensitivity analysis shows that the shift was made specifically towards safer (and not just larger) sites. The shift as measured by a PMD index decline cannot be accounted for by possible biases inherent in the data set.  We conclude that the data support the prediction that increasing predator danger has induced a shift by southbound migrant semipalmated sandpipers to safer sites.
+
+
+
+
+
+\tiny
+ \keyFont{ \section{Keywords:} 
+semipalmated sandpipers; peregrine falcons; predator response; stopover site selection; Atlantic Canada}
+\end{abstract}
+
+
+
+% \input{SESA_intro.tex}
+<<sesa-intro, cache=F, child="SESA_intro.tex">>=
+
+@
+
+<<fig-1,fig.pos='h', fig.cap="Number of breeding pairs of Peregrine falcons (\\textit{Falco peregrinus} in the Bay of Fundy region between 1980 and 2010. Dotted line shows the extension of the quadratic fit curve after 2010. Data from \\citet[][purple circles]{COSEWIC_PEFA_2017} and \\citet[][yellow triangles]{Dekker2011}.", fig.width = 6, fig.height = 6>>=
+ggplot(falconsBoF %>% filter(!is.na(source)), aes(Year, territorialPairs)) +
+  geom_ribbon(data = falc.predict, 
+              aes(ymin = BoFfalc - 1.98*se_fit, ymax = BoFfalc + 1.98*se_fit,
+                y = BoFfalc), fill = 'grey')+
+  geom_line(data = falc.predict %>% 
+    filter(falc.pres=='Yes'&Year>=max(falconsBoF$Year[!is.na(falconsBoF$source)],na.rm=T)),
+    aes(y = BoFfalc), linetype = 2,show.legend = F)+
+    geom_line(data = falc.predict %>% 
+    filter(falc.pres=='Yes'&Year<=max(falconsBoF$Year[!is.na(falconsBoF$source)],na.rm=T)),
+    aes(y = BoFfalc), show.legend = F)+
+  # geom_smooth()+#,
+  # method = 'lm', formula="y~I(x**2)+x")+
+  geom_point(aes(shape = source, 
+                 colour = source), size =2) + 
+  scale_colour_viridis_d()+
+  labs(y = "Number of territorial pairs of peregrine falcons") +
+lims(x = c(1974, 2017)) +
+  theme_minimal() + 
+  theme(legend.position='none')
+@
+
+
+\section{Methods}
+
+\subsection{Study region}
+
+The semipalmated sandpiper is a shorebird species with a hemisphere-spanning migration \citep{Brown2017}. The breeding range stretches across arctic North America, and the non-breeding range across the northern coasts of South America \citep{hicklin2010semipalmated}. Migrants moving from the breeding grounds pass either through the interior or to the east coast of North America. Atlantic Canada holds the most important staging areas \citep{Hicklin87}, with numerous potential stopover sites, especially around the Bay of Fundy \citep{garrett1972tidal,Hicklin1984,Sprague2008a,Quinn2012a}. Migrants arrive from the central and eastern portions of the breeding range, load large amounts of fuel, and depart to the south-east over the Atlantic Ocean \citep{Lank1983},making a single flight of over 4000 km directly to South America \citep{Lank1979}. 
+
+\subsection{Shorebird Surveys}
+
+
+
+<<runmap, include=F, runagain=file.info("../Rscripts/Example_Map.r")$mtime>>=
+source("../Rscripts/Example_Map.r", chdir = T)
+select <- dplyr::select  
+@
+
+The Atlantic Canada Shorebird Survey (ACSS) is organized by the Canadian Wildlife Service and has been conducted annually since 1974 to identify important stopover sites for migrating shorebirds and to help assess population trends. Surveyors attempt to census sites every second weekend during the southward migration period. Count methodology is described in detail by Morrison et al.(\citeyear{morrison_population_1994}; \citealt*{Gratto-Trevor2012}; see also the ACSS survey protocol and guidelines - \citealt*{ACSS_guide}). Protocols aim to make procedures consistent within sites across years, but there is substantial variability in methodology and effort among sites.   
+
+
+<<quant>>=
+ACSS_South_Danger$DayNum %>% min -1 + ymd("2019-01-01")  ->minday
+ACSS_South_Danger$DayNum %>% max -1 + ymd("2019-01-01")  ->maxday
+@
+ 
+The data for the analysis reported here were accessed through Bird Studies Canada’s Nature Counts database \citep{EnvironmentandClimateChangeCanada2008}. We focused on sites where semipalmated sandpiper were censused 1974-2017 throughout Nova Scotia, New Brunswick, and Prince Edward Island (\autoref{fig:acss-map}). Sites in Newfoundland (due to their position ancillary to the main semipalmated sandpiper migration route) and those at which semipalmated sandpipers have never been recorded were excluded. We included surveys during the main migratory period, defined as falling within the 10th (\Sexpr{paste(month(ymd(minday), label=T,abbr=F), day(ymd(minday)), sep = " ")}) and 90th (\Sexpr{paste(month(ymd(maxday), label=T,abbr=F), day(ymd(maxday)), sep = " ")}) quantiles of all semipalmated sandpipers counted between July and October. After this filtering, our analysis incorporated \Sexpr{nrow(ACSS_South_Danger_forAnalysis)} of the \Sexpr{n_distinct(updatedacss_data$SamplingEventIdentifier[updatedacss_data$MonthCollected>6])} surveys, and \Sexpr{updatedacss_data %>% filter(!StateProvince %in% c("Newfoundland and Labrador","NL", "" ) & YearCollected %in% yrs.w.lg & YearCollected != 1995) %>% .[["Locality"]] %>% n_distinct} of the \Sexpr{updatedacss_data$Locality[updatedacss_data$MonthCollected>6] %>% n_distinct} survey sites in the full dataset.
+
+<<acss-map,fig.pos='h', out.width = "0.8\\textwidth",fig.cap="Map of survey locations (n = 198) from the Maritimes portion of the Atlantic Canada Shorebird Survey. The size of each point is related to the number of surveys conducted at that site. Sites excluded from the final analysis are shown in red (n = 77).",fig.scap="Map of survey locations from the Maritimes portion of the Atlantic Canada Shorebird Survey.",runagain=file.info("../Rscripts/Example_Map.r")$mtime>>=
+overviewPlot
+@
+
+
+Each survey site is associated with a name describing the geographic locality, and a latitude and longitude in decimal degrees. To reduce possible pseudoreplication due to spatial autocorrelation, we pooled sites that were within 375m of each other, reducing the \Sexpr{updatedacss_data %>% filter(!StateProvince %in% c("Newfoundland and Labrador","NL", "" ) & YearCollected %in% yrs.w.lg & YearCollected != 1995 & MonthCollected>6) %>% .[["Locality"]] %>% n_distinct} `sites' into \Sexpr{n_distinct(ACSS_South_Danger_forAnalysis$ID)}  `locations'. The number of years that each site was surveyed and the number of surveys per year varied widely \autoref{fig:site-effort}). We used the mean of all the site-surveys in a year at a location, whatever the methodology, to represent that location in order to reduce any bias possibly arising with variation in the number of counts per location.
+
+
+<<site-effort,fig.pos='h', fig.cap="Number of years surveyed and the number of surveys per year for each location. The colour of the point is the safety index (i.e. proportion of the site within 150m of cover; see Methods). The two largest sites are named. Figure S2 shows results of sensitivity analysis around the importance of these two sites.", fig.scap="Number of years surveyed and the number of counts per year for each survey location.">>=
+# fig.width=8, fig.height=5, out.width='0.5\\textwidth',
+yr.site <- ACSS_South_Danger %>% group_by(Year, Lat, Lon, proportionDanger, Site.ID) %>% 
+  summarize(mean_date = mean(DayNum, na.rm=T),
+            mean_count = mean(SESA.Zeros, na.rm=T),
+            n_counts = n()) %>% group_by(Year) %>% mutate(n.sites = length(unique(Site.ID))) %>% 
+  ungroup %>% mutate( lowD = ifelse(proportionDanger<=0.2, "Low", "Higher"))
+
+## Summary by site over years
+site.survey.effort <- yr.site %>% group_by(Site.ID) %>% summarize(mean.n = mean(n_counts),
+                                            n.yrs = n()) %>% 
+  left_join(danger_site, by = c("Site.ID"= "Site.Code")) %>% 
+  mutate(#label = ifelse(n.yrs>20, paste(Locality), ""),
+         label = ifelse(mean.n>10, paste(Locality),"" ))
+ 
+surveyEffort_sites <- 
+  ggplot(site.survey.effort, aes(n.yrs, mean.n, colour = 1-proportionDanger)) + 
+    geom_jitter(width = .2, height = .2) + #heme_few() +
+    labs(x = "Number of years surveyed", y = "Mean number of counts per year", 
+         colour = "Safety index") + 
+    ggrepel::geom_text_repel( aes(label = label)) + 
+    scale_colour_viridis_c(direction = -1, option = "plasma") +
+    # scale_colour_gradient(low='blue', high = 'red') +
+  theme(legend.position = 'right')
+surveyEffort_sites
+@
+
+
+
+\subsection{Site Characteristics}
+
+
+We assigned measures of `size' and `safety' to each location. We used the area of intertidal habitat in a 2500m radius around each location’s geographic point as the measure of location size (\autoref{fig:MAPT-danger-breakdown}).  For many locations the measure of size is unaffected by the radius, but on large areas, particularly those along a large straight coastal stretch, the amount of intertidal area is strongly dependent on the radius. We chose 2500m based on our own experiences, in which we observed that foraging sandpipers quickly reacted to disturbances occurring within a few kilometres. Foraging sandpipers can traverse this distance in a few minutes \citep{Reurink2016}. We examine the sensitivity of the results to this assumption in Figure S2.  
+
+As defined by \citet{lank_ydenberg2003} `danger' represents the inherent riskiness of a location \citep[see also ][]{Hugie1994}. We indexed safety as the proportion of the intertidal area at each location lying beyond 150m of the shoreline, where foraging is most risky \citep[Equivalently, danger is the proportion of a location’s intertidal area lying within 150 m;][]{pomeroy_tradeoffs_2006,dekker_raptor_2004,Pomeroy2008a}. The 150m threshold is based on the estimated head-start distance required for a sandpiper to accelerate from a standing start to a peregrine’s stealth attack velocity. Using measures of peregrine stealth attack velocity in \citet{burns_effects_2002}, we estimated the head-start distance using the method developed by \citet{elliott1977prey} to calculate
+the distance within which lions had to approach wildebeests undetected in order to make a
+successful surprise attack. \citet[][]{hedenstrom2001predator} apply similar logic in models of prey escape strategies during falcon hunts (i.e. aerial climbing).  We estimate the required head-start as 150 -- 250m, at minimum. Most sandpiper foraging takes place further than this distance from shore \citep[see Figure 1b in ][]{pomeroy_tradeoffs_2006}. Figure S2 reports the results of a sensitivity analysis of this assumption.  
+
+
+<<MAPT-danger-breakdown, fig.pos='h',fig.width=4, fig.height = 8, out.width="0.5\\textwidth", fig.cap="Example showing the safe (purple) and dangerous (red) portions of a habitat. Mary's Point, NB is shown with its geographic location highlighted by the point. The 2,500 m radius habitat circle is shown around this point. Only intertidal mudflat habitat is shown.", fig.align='center',fig.scap="Example assignment of a survey site into safe and dangerous habitat.">>=
+
+ex_Danger <- tibble(x=0:900) %>% mutate(y=1/(x)**.2,d_group=ifelse(x<=150, "High", "Low"))
+danger_plot_ex <- 
+ggplot(ex_Danger, aes(x,y, fill=d_group)) + geom_area() + coord_cartesian(ylim=c(0.25, 0.7), xlim=c(1,599)) +
+  labs(y="Predation Danger", x="Distance from Cover") + scale_fill_brewer(type='qual', palette = 'Set1', direction = 1) +
+  annotate("text", x = 80, y = 0.29, label = "High\nDanger", colour = 'white')+
+  annotate("text", x = 250, y = 0.28, label = "Low\nDanger", colour = 'white')+
+  annotate("text", x = 200, y = 0.5, label = "150m", colour = 'black')+
+  geom_vline(xintercept = 150, size=2)+
+  theme(legend.position = 'none',axis.ticks = element_blank(), axis.text = element_blank(), axis.line = element_blank(),
+        text = element_text(family = "Times"))
+
+mapt_plt + scale_fill_viridis_d(option ="magma", direction = -1, begin = 0.15, end = 0.6)
+#plot_grid(mapt_plt, danger_plot_ex, nrow=2, labels="AUTO", rel_heights = c(0.6,0.4))
+#(B) We assigned habitat initially as safe if it was within 150m of cover or the shoreline. We assumed that predation danger dropped as the distance from cover increased. The shape of the predation danger curve is for illustrative purposes only.
+@
+
+
+
+
+We calculated size and the safety indices from the CanVec map layers data set produced by Natural Resources Canada (acquired from:\url{www.GeoGratis.gc.ca}), which shows intertidal habitat and shoreline to a scale of 1:50,000. We extracted a polygon of intertidal as the waterbody features labelled as ‘temporary’ under the “Hydro” feature category within the CanVec dataset. We also extracted the highwater line layer and created a buffer of 150m around that line, which was then clipped to the intertidal layer. For each Universal Transverse Mercator (UTM) region, we transformed each polygon layer from original geographic projection (North American Datum (NAD) 1983 CSRS; Spheroid: GRS 1980; WKID: 4617) to the UTM region projection (UTM 19-22N WGS84) and clipped it to that grid. Around each site location we created a buffer 2500m in radius and defined the area of intertidal habitat as the area of the intertidal polygons that fell within that buffer (\autoref{fig:MAPT-danger-breakdown}).
+
+
+
+
+\subsection{Priority Matching Distribution index}\label{sec:pmd}
+We describe the distribution of sandpipers across locations in each year using a `Priority Matching Distribution' (PMD) index. The PMD index assesses how closely the measured proportional distribution of sandpipers matches various distribution possibilities, ranging from sandpipers aggregating at dangerous locations, to spreading evenly over locations, to aggregating at safer locations \cite[][]{Ydenberg2017}. 
+
+The PMD index is calculated as follows. In each year, $k$ sites are surveyed and are indexed as $i = 1,2,3,\dotsc,k$, ordered from most dangerous ($i=1$), to safest ($i=k$). The annual mean number (across all surveys) of sandpipers censused (`usage') at location $i$ is denoted $U_i$. The area of intertidal habitat at that location is denoted $A_i$. The safety index for the site, $y_i$, is the proportion of the site's total intertidal area that lies more than 150m from the shoreline, whereas the danger index ($x_i = 1-y_i$) for the site is the proportion that lies within 150m of the shoreline (\autoref{fig:MAPT-danger-breakdown}). 
+
+% the area that lies within 150m of the shoreline as $D_i$. The danger index for the location is the proportional area that lies \textit{within} 150 m of cover
+% \begin{equation}
+%   x_i=\frac{D_i}{A_i}
+% \end{equation}
+% while the safety index is the proportional area \textit{further} than 150 m from cover (\autoref{fig:MAPT-danger-breakdown}B),
+% \begin{equation}
+%   y_i = 1-x_i
+% \end{equation}
+
+We calculated the proportional area ($p_i$) and bird usage ($q_i$) of each location in relation to the total area surveyed and birds counted for all locations sampled in a given year. In each year, the cumulative proportion of the total area surveyed up to location $i$ is
+\begin{equation}\label{eq:cai}
+  cA_i= \sum_{j=1}^{i} p_j
+}
+}
+\end{equation}
+where the cumulative proportional area of all $k$ sites surveyed in a year $cA_{k}=1$. Analogously, the cumulative proportion of usage up to location $i$ is calculated as   
+\begin{equation}\label{eq:cui}
+  cU_i= \sum_{j=1}^{i} q_j
+}
+\end{equation}
+
+Calculation of the annual PMD index involves comparing the area under the curve (`AUC') of measured sandpiper usage (\autoref{eq:cui}), with that expected if sandpipers are distributed in relation to the intertidal area of each location (\autoref{eq:cai}; see \autoref{fig:example-plot}).  AUC is calculated using a trapezoidal function. The trapezoid function for area of habitat surveyed is defined as 
+\begin{equation}
+  \text{AUC}_{\text{A}}= \sum^k_{i=2}\frac{(y_i - y_{i-1})(cA_i + cA_{i+1})}{2} 
+\end{equation}
+where $i$ is a given location and $i-1$ is the next most dangerous location. For bird usage the area under the distribution is calculated as
+\begin{equation}
+  \text{AUC}_{\text{U}} = \sum^k_{i=2}\frac{(y_i - y_{i-1})(cU_i + cU_{i+1})}{2} 
+\end{equation}
+We used the trapezoid function because its estimate lies between that generated by the `upper-step' and `lower-step' functions. Sensitivity analyses using these step functions in place of the trapezoidal function produce only minor differences in the results.
+
+The Priority Matching Distribution index is calculated as 
+\begin{equation}
+  PMD = \frac{\text{AUC}_{\text{U}} }{\text{AUC}_{\text{A}}}
+\end{equation}
+
+<<example-year>>=
+exampleYear1985 <- filter(ACSS_South_Danger, Year == 1985) 
+exampleYear <- exampleYear1985 %>% group_by(Locality, ID, proportionDanger, IntertidalArea) %>% 
+  summarize(mean.count = mean(SESA.Zeros, na.rm=T)) %>% ungroup %>% arrange(desc(proportionDanger)) %>% 
+  mutate(Safety = 1-proportionDanger,
+    cArea = cumsum(IntertidalArea),
+    cArea_int = (cArea - lag(cArea)) / 2 + lag(cArea),
+    cExp_int = cArea_int / max(cArea),
+         cExp = cArea / max(cArea),
+         cSESA = cumsum(mean.count),
+         cObs = cSESA / max(cSESA),
+    cObs_int = (cObs - lag(cObs)) / 2 + lag(cObs)
+    ) 
+
+
+
+@
+
+
+
+<<example-plot, fig.pos='h',fig.width=5, fig.height=10, out.width="0.5\\textwidth", fig.cap="How the Priority Matching Distribution index is calculated, using 1985 in this example. The locations (red and black bars; locations with equivalent safety are stacked) surveyed in a year are ordered along the x-axis from lowest to highest safety index ($y_i$), with the cumulative proportional usage (Panel A: numerator of the PMD index), and intertidal area (Panel B: denominator of the PMD index) shown by the height of the vertical bar. The grey area in each plot shows the area under the distribution (AUD) used to calculate the PMD index.",fig.scap="Example of the construction of the Priority Matching Distribution index for a given year">>=
+require(cowplot)
+x_lab <- expression(paste("Proportion of site further than 150 m from shore (",y[i],")"))
+
+
+exp.auc.plt <- ggplot(exampleYear, aes(Safety, cExp))+ 
+  geom_area(data= exampleYear, alpha = 0.25)+
+  # geom_step()+ #geom_line(data = exampleInt)+
+  geom_line()+xlim(0,1)+
+  theme_minimal()+
+  geom_col(fill = "red",position = 'identity',width = .01)+
+  labs(x = x_lab, y = expression(paste("Cumulative area surveyed (", cA[i], ")" )))#Proportion of c
+
+
+obs.auc.plt <- ggplot(exampleYear, aes(Safety, cObs)) + 
+  geom_area(data= exampleYear, alpha = 0.25)+
+  # geom_step(alpha = 0.5)+ geom_line(data = exampleInt)+
+  geom_line()+
+  theme_minimal()+
+  xlim(0,1)+
+   geom_col(fill = "black",position = 'identity',width = .01)+
+  labs(x = x_lab, y = expression(paste("Cumulative total birds counted (", cU[i], ")"))) #Proportion of
+
+
+example_PLots <- plot_grid(obs.auc.plt+xlab(""),exp.auc.plt +xlab(""), nrow=2, align = "v", labels = c("A", "B"))
+p2 <- add_sub(example_PLots,
+          x_lab)
+ggdraw(p2)
+
+@
+
+ Values of the PMD index vary systematically with the distribution of sandpipers across locations, as summarized in \autoref{tab:sim-ex} and shown in Figure S1. Note that the PMD index is calculated using proportions of the total number of sandpipers. It's value is not affected by the number of sandpipers, unless the proportional distribution across locations also changes. Conversely, a change in the proportional distribution changes the PMD index value even if the
+total number of sandpipers remains unchanged.
+
+<<tabs,child="Tables.Rnw",eval=F>>=
+@
+
+<<table-pmd-sim, results='asis'>>=
+tab_ <- mc_sim_sum %>% arrange(desc(med))%>%
+mutate(
+  name_ = ifelse(col == "aggDanger", "Danger Aggregation",
+                        ifelse(col == "aggMid", "Intermediate Aggregation",
+                          ifelse(col == "areaMatchingBirds", "Area Matching",
+                            ifelse(col == "uniformBirds", "Site Matching",
+                              ifelse(col == "dangerMatchingBirds", "Safe Area Matching",
+                                ifelse(col == "hurdleBirds", "Safety Aggregation", "ERROR")))))),
+
+  description = ifelse(col == "aggDanger", "90\\% of usage at the most dangerous 20\\% of sites",
+  #"Aggregating at dangerous locations",
+                        ifelse(col == "aggMid", "Aggregation on mid-safety locations",
+                          ifelse(col == "areaMatchingBirds", "Usage proportional to intertidal area",
+                            ifelse(col == "uniformBirds", "Usage equal on all locations",
+                              ifelse(col == "dangerMatchingBirds", "Usage proportional to safe intertidal area",
+                                ifelse(col == "hurdleBirds", "90\\% of usage at the safest 20\\% of sites", "ERROR"))))) )) %>%
+    select(name_, description, lci, med, uci)   %>% 
+    xtable(label = "tab:sim-ex", caption= "Simulated values of the PMD index as the usage distribution of semipalmated sandpipers over 100 simulated census locations.  A bootstrap was used to estimate 95\\% CI intervals.",
+         align=c("p{0.01\\textwidth}",
+                "p{0.25\\textwidth}",
+               "p{0.4\\textwidth}",
+               "R{0.07\\textwidth}",
+               "R{0.07\\textwidth}",
+               "R{0.06\\textwidth}")) 
+#\n(visual inspection required to distinguish from uniform distributions)
+names(tab_) <- c("Name", "DESCRIPTION of DISTRIBUTION", "lci", "PMD index value", "uci")
+
+print(tab_, sanitize.text.function=function(x){x},
+       floating = TRUE, #floating.environment = "sidewaystable",
+       include.rownames = FALSE, caption.placement = "top")
+
+@
+
+
+\subsection{Analysis}
+
+Locations vary in the number of surveys, both within and between years (\autoref{fig:site-effort}). To examine the potential influence of individual locations we calculated the PMD index with and without each location (`leverage', see \autoref{tab:leverage}). Based on this, we excluded from the analysis \Sexpr{(2019-1974)-length(yrs.w.lg)+1} of \Sexpr{(2018-1974)} years that did not include surveys at one of the two most surveyed locations, namely Mary's Point, NB ($45.72^{\circ}$N, $64.65^{\circ}$W) and Johnsons Mills, NS ($45.81^{\circ}$N, $64.5^{\circ}$W). We calculated and analyzed trends in the PMD with both locations excluded to ensure the results were not driven entirely by these locations (see Figure S2). We also excluded the year 1995, which had an extremely high count at a site surveyed in no other year that had a strong influence on the annual PMD.  Our final data set included \Sexpr{nrow(ACSS_South_Danger_forAnalysis)} surveys at \Sexpr{n_distinct(ACSS_South_Danger_forAnalysis$ID)} stopover locations, made 1974 -- 2017 (excluding 1990, 1991, 1995, 1998, 2008, 2010, 2011, 2013, 2014). 
+
+
+
+<<leverage-table, results='asis', dependson='sesa-mean-runs'>>=
+yr.site <- ACSS_South_Danger %>% group_by(Year, Lat, Lon, proportionDanger, Site.ID) %>% 
+  summarize(mean_date = mean(DayNum, na.rm=T),
+            mean_count = mean(SESA.Zeros, na.rm=T),
+            n_counts = n()) %>% group_by(Year) %>% mutate(n.sites = length(unique(Site.ID))) %>% 
+  ungroup %>% mutate( lowD = ifelse(proportionDanger<=0.2, "Low", "Higher"))
+
+site.survey.effort <- yr.site %>% group_by(Site.ID) %>% summarize(mean.n = mean(n_counts),
+                                            n.yrs = n()) %>% 
+  left_join(danger_site, by = c("Site.ID"= "Site.Code")) %>% 
+  mutate(#label = ifelse(n.yrs>20, paste(Locality), ""),
+         label = ifelse(mean.n>10, paste(Locality),"" ))
+ 
+influence.by.site <- 
+  read_rds(".rds/leverage.rds") %>% group_by(Site.Code, Locality) %>% 
+  summarise(totalInfluence = sum(influence, na.rm=T),
+            cookD = sum(influence)/(var(mean.run$aucRatio)) ) %>% ungroup %>% 
+  left_join(site.survey.effort, by = c("Site.Code" = "Site.ID", "Locality"))
+lev_tab <- filter(influence.by.site, cookD > 1) %>% arrange(desc(cookD)) %>% 
+  mutate(psafety = 1-proportionDanger) %>%
+  select(Locality,  psafety, area_km, n.yrs, cookD) %>% 
+  mutate(Locality = gsub("Evangeline Beach Motel & Viewing Platform", "Evangeline Beach Motel", Locality),
+    Locality = gsub( "Saints Rest Marsh & Beach","Saints Rest Marsh and Beach", Locality)) %>% 
+  xtable(label = "tab:leverage", caption= "Sites with the most influence on the Priority Matching Distribution index across all years within the survey dataset. Leverage is defined here as the Cook's distance of annual influence (sum of the squared differences between PMD calculated with and without a site, divided by the interannual variation in the PMD).")
+
+names(lev_tab) <- c("Site Name", "Safety ($y_i$)", "Area ($km^2$)", "Number of Years", "Leverage")
+
+print(lev_tab, sanitize.text.function=function(x){x},
+       floating = TRUE, #floating.environment = "sidewaystable",
+       include.rownames = FALSE, caption.placement = "top")
+
+@
+
+
+Our analysis focused on two questions: 1) how do semipalmated sandpipers distribute across stopover locations; and 2) has the proportional distribution of semipalmated sandpipers changed systematically since surveys began in 1974? We calculated the PMD index for each survey year. We examined annual change using a linear model, centred and rescaled by year to provide a meaningful intercept and provide a more accurate effect size \citep{gelman2006data}. We used Akaike Information Criterion (AIC) to compare support for a linear trend by competing a null model, a linear interannual trend model, a model with a quadratic term, and a model with the log of the interannual trend. We assessed the fit to the linear trend by bootstrapping the original count data to compute 95\% confidence intervals of the intercept and interannual trend estimates.  
+
+We carried out a series of sensitivity analyses. To explore the sensitivity of the PMD index to our assumptions of location size (2.5 km) and the danger buffer (150 m), we altered the radius used to calculate $A_i$ from 2.5km to 1km and 5km, and modified the danger buffer from 150m to 50m, 300m, and 450m. We also expanded the dates of surveys to include the 60th, 90th, 95th, 98th quantiles of dates, and with all surveys between July and October.  
+
+We recalculated the PMD in each year excluding Mary’s Point and Johnsons Mills. To control for the site bias towards a greater number of dangerous sites in later years (see \autoref{fig:survey-effort}), we binned sites into 0.1 categories of safety. We sampled one site from each bin in each year, creating equal numbers of sites in all years. We resampled 1000 times and calculated the slope and intercept of the calculated PMD for each draw. We simulated the impact of sea level rise by reducing the total area of habitat available by the rate described in \citet{Murray2019}, recalculating the safety index and redistributing total number of birds counted in that year across the site using a $Beta(1,14)$ distribution. For each simulation we calculated the PMD for each year and recalculated the intercept and rate of change in the linear interannual trend model. 
+
+Finally, to assess whether the trend in the PMD index was driven by site size or site safety, we modified the calculation of the PMD index by arranging sites from smallest to largest instead of most dangerous to safest. 
+
+
+%\autoref{fig:ass-relax}.
+
+
+
+<<survey-effort, fig.width = 8, fig.height=8, out.width="0.6\\textwidth", fig.cap="Biases and variation in site survey effort across years and dates. (A) Number of sites surveyed in a given day across years where darker blue shows more sites surveyed on a given day of year in a year. (B) Mean safety ($y_i$) of sites surveyed in a given day across years where red indicates more dangerous sites surveyed for a given day and purple shows safer sites surveyed on that day. Grey represents zero surveys in both figures.",fig.pos='h',fig.scap="Biases and variation in site survey effort across years and dates.">>=
+
+
+require(cowplot)
+dailysumPlt <- 
+ggplot(data=dailySummary, aes(Year, DayNum)) + geom_tile(aes(fill=nsites)) +
+  labs(y = "Day of Year", fill = "Number\nof Sites\n")+ ggthemes::scale_fill_continuous_tableau(palette = "Blue")
+
+
+dailySummaryDanger <- ACSS_South_Danger %>%
+  group_by(DayNum, Year) %>% 
+  summarize(danger = mean(proportionDanger)) %>% ungroup %>% 
+  spread(key = Year, value = danger, fill = NA) %>% 
+  gather("Year", "danger", 2:43) %>% 
+  mutate(Year = as.numeric(Year))
+
+daily_dangerPlot <- 
+  ggplot(data = dailySummaryDanger, aes(Year, DayNum)) + geom_tile(aes(fill = 1-danger)) +
+  labs(y = "Day of Year", fill = "Mean\nSite\nSafety\n")  +
+  scale_fill_viridis_c(direction = -1, option = "plasma",
+    begin = 0.1, end = 0.6) 
+  # ggthemes::scale_fill_continuous_tableau(palette = 'Red')
+
+
+plot_grid(dailysumPlt, daily_dangerPlot, nrow = 2, labels = "AUTO")
+
+
+@
+
+
+\section{Results}
+
+\Sexpr{ACSS_no_badyrs <- ACSS_South_Danger_forAnalysis %>% filter(Year%in% yrs.w.lg & Year !=1995)}
+\subsection{Location Characteristics}
+The \Sexpr{n_distinct(ACSS_no_badyrs$ID)} locations are arrayed over \Sexpr{diff(ACSS_no_badyrs$Lat %>% unique %>% range
+)} degrees of latitude and \Sexpr{diff(ACSS_no_badyrs$Lon %>% unique %>% range
+)} degrees of longitude (mean: \Sexpr{ACSS_no_badyrs$Lat %>% unique %>% mean
+}$^{\circ}$N, \Sexpr{ACSS_no_badyrs$Lon %>% unique %>% mean
+}$^{\circ}$W; \autoref{fig:acss-map}). On average, \Sexpr{round(mean(yearly_summary$n.sites),1)} locations were censused per year (range \Sexpr{min(yearly_summary$n.sites)} -- \Sexpr{max(yearly_summary$n.sites)}), averaging \Sexpr{round(mean(yearly_summary$mean.counts),1)} surveys each per year (range \Sexpr{round(min(yearly_summary$mean.counts),1)}-\Sexpr{round(max(yearly_summary$mean.counts),1)}). The total annual count (summed over all locations) of semipalmated sandpipers varies between \Sexpr{round(min(yearly_summary$sum.count),0)} birds (\Sexpr{sprintf("%s", yearly_summary$Year[which.min(yearly_summary$sum.count)])}) and \Sexpr{max(yearly_summary$sum.count)} birds (\Sexpr{sprintf("%s", round(yearly_summary$Year[which.max(yearly_summary$sum.count)],0))}) with a mean of \Sexpr{round(mean(yearly_summary$sum.count),0)}, and no trend across years ($\beta$=\Sexpr{sprintf("%.4f",trendtot$estimate[trendtot$term=="Year"])} [\Sexpr{trendtot$conf.low[trendtot$term=="Year"]}, \Sexpr{trendtot$conf.high[trendtot$term=="Year"]}], using a log link).
+
+
+Locations range in size from \Sexpr{round(min(ACSS_no_badyrs$area_km),3) %>% as.character} $\text{km}^2$ to \Sexpr{max(ACSS_no_badyrs$area_km)} $\text{km}^2$, with a mean of \Sexpr{mean(unique(ACSS_no_badyrs$area_km))} $\text{km}^2$. Safety indices ranged from \Sexpr{sprintf("%.1f",(ACSS_no_badyrs$proportionDanger %>% unique %>% max ))} to \Sexpr{(ACSS_no_badyrs$proportionDanger %>% unique %>% min)} with a mean of \Sexpr{(ACSS_no_badyrs$proportionDanger %>% unique %>% mean)}. Most locations are small and relatively dangerous (\autoref{fig:danger-site}). There is overall a negative (log-linear) relation between location size and danger, so that large sites are on average safer, though note the wide variation. For example, locations 3 -- 4 $km^2$ in size have danger index values ranging from 0.2 -- 0.8. 
+
+<<danger-site, fig.pos='h',fig.cap="Location danger as a function of size. The fitted line shows the log-linear trend of danger with intertidal area. Larger sites are generally less dangerous, but the danger index varies widely between sites of a given size.">>=
+ggplot(danger_site, aes(area_km, proportionDanger)) + geom_point() +  
+  labs(y = "Proportion of site closer than 150 m from shore", x = expression(Area~of~intertidal~(km^2))) + 
+#geom_smooth(method='lm', formula="y~I(x**2)+x", alpha = 0.25) +
+  geom_smooth(method = 'glm', method.args = list(family=gaussian('log')), alpha = 0.25)# +
+  #geom_vline(xintercept = c(0.1, 2, 6), colour = 'red', linetype = 2) 
+@
+
+
+
+
+\subsection{Sandpiper distribution}
+\Sexpr{range_res <-broom::augment(AUC.results$models$`Year linear`) %>% .[['.fitted']] %>% range}
+
+% From the \Sexpr{n_distinct(updatedacss_data$SamplingEventIdentifier)} surveys across \Sexpr{n_distinct(updatedacss_data$YearCollected)} years in the original dataset our analysis incorporated \Sexpr{nrow(ACSS_no_badyrs)} surveys and estimated the PMD in \Sexpr{n_distinct(mean.run$Year)} years. 
+
+Annual PMD index values (\autoref{fig:temporal-plot}) range from \Sexpr{max(mean.run$aucRatio)} to \Sexpr{min(mean.run$aucRatio)} with an overall mean of \Sexpr{sprintf("%.2f",mean.run %>% filter(Year%in% yrs.w.lg & Year !=1995) %>% .[['aucRatio']] %>% mean)} (95\% CI [\Sexpr{ci_PMD[[1]]}, \Sexpr{ci_PMD[[2]]}]). Most estimates of the PMD index are well below 0.50 indicating that semipalmated sandpipers aggregate at safer locations. The overall annual mean value of \Sexpr{sprintf("%.2f",mean.run %>% filter(Year%in% yrs.w.lg & Year !=1995) %>% .[['aucRatio']] %>% mean)} corresponds with that expected when 90\% of usage occurs at the safest 20\% of locations (see \autoref{tab:sim-ex}).
+
+
+<<tab2-aic, results='asis'>>=
+
+comment <- list(pos = list(0), command = NULL)
+comment$pos[[1]] <- c(nrow(AicRes))
+comment$command <- paste("\\hline\n\\multicolumn{10}{l}{ \\footnotesize AICc = ", round(min(AicRes$AICc),2), "; n = ", min(AicRes$N), "}", sep="")
+
+
+tableout <- dplyr::select(AicRes, trend, loglik, dAICc, K, w, r2) %>%
+        mutate(trend = ifelse(trend == "None","Null",trend)) %>%
+        xtable(label="tab:aic", caption = c("Support for models of interannual trends in the Priority Matching Distribution. Models other than the null model use a centred and standardized variable for Year. The log-linear model is a linear generalized linear model with a log link function for the gaussian distribution. All other models are linear models with the identity link function. We used AICc values to correct for biases in the Akaike's information criterion in models with low sample sizes, log(L) is the log-likelihood value, $\\triangle_i$ is the difference in AICc value from that of the top model (i.e., lowest AICc), K is the number of parameters in each model and $w_i$ is the Akaike weight. $r^2$ are listed to show improvement of model fit between null and fitted model", "Support for models of interannual trends in the Priority Matching Distribution."))
+
+names(tableout) <- c("Interannual Trend", "log(L)", "$\\triangle_i$", "K", "$w_i$", "$r^2$")
+
+print(tableout,sanitize.text.function=function(x){x},
+       floating = TRUE,include.rownames = FALSE, hline.after = 
+        c(-1,0) ,#scalebox='0.75',23
+        add.to.row = comment, caption.placement = "top")#, scalebox=0.7
+
+
+@
+
+
+<<temporal-plot,dependson='bootstrap', fig.pos='h',fig.cap="Interannual trend in the Priority Matching Distribution index (PMD) with the 95\\% bootstrapped confidence intervals. Points are the PMD for each year (red points) with the 95th inner quantiles of variation in the estimate shown in the grey points. The expected PMD index values for various distributions (danger aggregation, site-matching, area-matching, safe-area-matching, and safety aggregation) are shown as horizontally dashed lines.", out.width='0.9\\textwidth', fig.width = 8, fig.height = 8,fig.scap="Interannual trend in the Priority Matching Distribution index with the 95\\% bootstrapped confidence intervals.">>=
+finalTemporalPlot <- ggplot(dplyr::filter(baseline, 
+                                   Year %in% yrs.w.lg & Year != 1995), 
+                            aes(Year, aucRatio)) +
+  # geom_rect(data = mc_sim_sum, aes(x = NULL, y = NULL, 
+    # xmin = 1974, 
+    # xmax = 2018, ymin = lci, ymax = uci, fill = col), alpha = 0.2) +
+  geom_ribbon(data = lmres.ci, aes(ymax = uci, ymin = lci), fill = 'grey', alpha = 0.5) +
+  geom_hline(data = mc_sim_sum, aes(yintercept = med, group = col), linetype = 2) + 
+  # geom_hline(yintercept = 1, linetype = 'dashed') +
+  geom_point(data = auc.res.boot %>% filter(aucRatio < uci & aucRatio > lci), 
+    aes(Year, aucRatio), alpha = 0.002, colour = 'grey') +
+  geom_point(colour = 'red', size = 2) +
+  geom_line(data = baseline, aes(y = .fitted)) +
+  # geom_line(data = lmres.ci, aes(y = uci), linetype = 2, colour = 'blue', alpha = 0.5) +
+  # geom_line(data = lmres.ci, aes(y = lci), linetype = 2, colour = 'blue', alpha = 0.5) +
+  labs(y = "Priority Matching Distribution Index") + 
+  geom_text(data = mc_sim_sum, aes(x = 2021, 
+    y = med + 0.0,label = labels ), size =3) + 
+  theme(legend.position = 'none') +
+  coord_cartesian(ylim = c(0,2.1))  
+finalTemporalPlot  
+@
+
+
+Linear and log-linear models both estimate a decline in the PMD index over years (\autoref{tab:aic}), and have approximately equal support from the data ($w_i$ = \Sexpr{AicRes$w[AicRes$trend == "Linear"]} and $w_i$ = \Sexpr{AicRes$w[AicRes$trend == "Log Linear"]} respectively). The quadratic model is less well supported ($w_i$ = \Sexpr{AicRes$w[AicRes$trend == "Quadratic"]}), and the null model not at all  ($w_i$ = \Sexpr{AicRes$w[AicRes$trend == "None"]}). There is little deviation from linearity in the estimated trends for the log-linear model, and we therefore consider only the linear model. It shows that the PMD index falls at a standardized rate of \Sexpr{yr_lin_tidy$estimate[yr_lin_tidy$term == "Yr.st"]} (95\% CIs [\Sexpr{yr_lin_tidy$conf.low[yr_lin_tidy$term == "Yr.st"]
+}, \Sexpr{yr_lin_tidy$conf.high[yr_lin_tidy$term == "Yr.st"]
+}]) per SD of years (\Sexpr{AUC.results$AUC$Year %>% sd} y), equivalent to \Sexpr{as.character(-1*round(diff(range_res) / (2017-1974),3))} per year, for a \Sexpr{round(diff(range_res),2)}-point decline in the PMD index between 1974 and 2017. This decline could be created either by (i) birds crowding into fewer sites (90\% of birds at the  27\% (1974) safest sites, shifting to the 13\% (2017) safest sites); (ii) more birds crowding into the 20\% safest sites (from 80\% of birds in 1974 to 97\% in 2017); (iii) or some combination of the two. Despite the extensive variability in methodology and the irregular coverage, the regression provides a reasonable fit ($r^2$ = \Sexpr{AicRes$r2[AicRes$trend == "Linear"]}) to the data. 
+
+
+
+
+
+<<area-pmd>>=
+yearModels <- read_rds(".rds/assumptionrelaxation.rds")
+areapmd <- yearModels[yearModels$runName=="Area Sorted PMD"&yearModels$term=="Yr.st",]
+
+@
+
+%\autoref{fig:ass-relax}
+The sensitivity analyses (Figure S2) demonstrate that variation in the number or danger of the sites surveyed each year does not bias the PMD index estimates, and is therefore unlikely to explain the interannual trend. Likewise, modification of the assumptions governing neither the selection of data nor those underlying the PMD calculation alter the results. `Binning' the sites does not change the mean interannual trend of the PMD index ($\beta$=\Sexpr{binningResults[binningResults$term=="Yr.st",]$estimate}), but it does reduce the precision (95\% CI[\Sexpr{binningResults[binningResults$term=="Yr.st",]$`2.5 %`}, \Sexpr{binningResults[binningResults$term=="Yr.st",]$`97.5 %`}]). This is not surprising, as we drew only one site per bin per year. Simulating a response to sea-level rise (i.e. sites becoming smaller) does not replicate the observed interannual trend in the PMD, indicating the level of observed sea-level rise observed across the years could not alone cause the shift between sites.
+
+Most importantly, the “Area Sorted PMD” analysis reveals that the temporal trend is eliminated when locations are ranked ’small to large’ rather than ‘dangerous to safe’ (interannual trend: \Sexpr{areapmd$estimate}; 95\% CI[\Sexpr{areapmd$`2.5 %`}, \Sexpr{areapmd$`97.5 %`}]). This shows that the decline in PMD is better explained by a shift to safer rather than to larger locations. 
+
+
+
+
+% \section{Figures}
+<<figs,child="Figures.Rnw",eval=F>>=
+@
+
+
+% \input{SESA_Discussion.tex}
+<<sesa-discussion, child="SESA_Discussion.tex", cache=F>>=
+
+@
+
+<<packages-used, echo=F, include =F>>=
+packagesused <- loadedNamespaces()
+knitr::write_bib(packagesused, file = "packages.bib")
+@
+
+\section*{Conflict of Interest Statement}
+The authors declare that the research was conducted in the absence of any commercial or financial relationships that could be construed as a potential conflict of interest.
+
+\section*{Author Contributions}
+
+DH, RY, and DL conceived of the study. PS and JP provided advice on the data use to fit with the study goals. JP organized data collection and cleaning. DH, with RY and DL designed the PMD index. DH performed the analysis, simulations. DH, RY, and DL wrote the paper with input from PS and JP. 
+
+\section*{Funding}
+This study was supported by the Natural Sciences and Engineering Research Council of Canada, Environment and Climate Change Canada, and Simon Fraser University. 
+
+
+\section*{Acknowledgements}
+The many of the members of the Centre for Wildlife Ecology at Simon Fraser University provided feedback on the development of the PMD index. NatureCounts and Bird Studies Canada managed and provided access to the ACSS dataset; we extend our sincere thanks to the many volunteers who contributed to this dataset. This paper was originally written as a thesis chapter and benefited from the feedback provided by DH's committee members and thesis examining committee. A version of this manuscript was included in the PhD thesis of DH \citep[Chapter 4 in ][]{Hope2018a}. This manuscript has been released as a Pre-Print at bioRxiv \citep{Hope741413}.
+
+  \bibliographystyle{frontiersinSCNS_ENG_HUMS}
+  \bibliography{hope_sesa}
+
+
+
+\end{document}

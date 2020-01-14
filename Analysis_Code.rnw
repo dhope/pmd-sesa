@@ -1,0 +1,236 @@
+<<parent-sesa-code, include=F, eval=T>>=
+set_parent("HopeLankSmithPaquetYdenberg_SESA.Rnw")
+@
+
+<<data-import-sesa>>=
+acss_dat <- read.csv("../MasterFilesFromPaul/PrismDataDownload/bmde_data.txt", sep = "\t", stringsAsFactors = F)
+acss_dat2 <- read.csv("../MasterFilesFromPaul/PrismDataDownload/update/bmde_data.txt", sep = "\t",stringsAsFactors = F) %>% filter(YearCollected!=2018)
+# danger_150 <- read.csv("./danger.r_Prism_150.csv")
+danger_all <- readRDS("../Rscripts/DangerEstimatesUpdated/Danger_Estimates_all.rds") %>% 
+  rename(danger = propD) %>% mutate(IntArea = Intertial / 1000**2, IntCells = IntArea )
+danger_150 <- danger_all %>% filter(distD == 150 & radius == 2500)
+species <- unique(acss_dat$CommonName) %>% sort   
+@
+
+
+<<formatdata-sesa, include=F,cache=F,eval=T>>=
+select <- dplyr::select 
+updatedacss_data <- acss_dat %>% filter(YearCollected!=2016)%>% bind_rows(acss_dat2 %>% select(-Family))
+ACSS_South_Danger <- prepareDat(updatedacss_data, 
+	danger_150, c(0.1, 0.9))
+sum_dat <- summarizeData(ACSS_South_Danger, 1231, average = T, transform = "None")
+ 
+danger_site <- ACSS_South_Danger %>% dplyr::select(Locality, Site.ID, proportionDanger, IntertidalArea, area_km, Site.Code, Site.Name) %>% distinct
+ 
+yrs.w.lg <- ACSS_South_Danger %>% group_by(Year) %>% 
+  summarize(lgsitepresent = ifelse(("45.72_-64.65" %in% Site.ID | "45.81_-64.5" %in% Site.ID), TRUE, FALSE)) %>% 
+  filter(lgsitepresent) %>% .[['Year']]
+ACSS_South_Danger_forAnalysis <- ACSS_South_Danger %>% filter(proportionDanger != 0 ) %>%
+    filter(Year %in% yrs.w.lg  & Year !=1995)
+
+dailySummary <- ACSS_South_Danger %>% #ACSS_South_Danger_forAnalysis
+  group_by(DayNum, Year) %>% 
+  summarize(nsites = n()) %>% ungroup %>%
+  tidyr::spread(Year, nsites, fill = NA) %>% 
+  tidyr::gather("Year", "nsites", 2:ncol(.)) %>% 
+  mutate(Year = as.numeric(Year))
+
+yearly_summary <- ACSS_South_Danger_forAnalysis %>% 
+  filter(proportionDanger != 0 ) %>%
+	  group_by(Site.Code, Year) %>%
+	  summarise(mean.count = mean(SESA.Zeros),
+				mean.DoY = mean(DayNum),
+				n.counts = n(), 
+				danger=mean(proportionDanger)) %>%
+	  group_by(Year) %>%
+	  summarise(mean.counts = mean(n.counts),
+				n.sites = n(),
+				mean.mean.Doy = mean(mean.DoY),
+				mean.mean.count = mean(mean.count),
+				sum.count = sum(mean.count),
+				mean.danger = mean(danger),
+				max.danger = max(danger),
+				ratio.danger = max.danger/ mean.danger)
+@
+
+<<yrtrend>>=
+lmtot <- glm(sum.count~Year, data = yearly_summary %>% filter(Year %in% yrs.w.lg), family = gaussian(link = 'log'))
+
+trendtot <- broom::tidy(lmtot, conf.int=T)
+@
+
+<<sesa-mean-runs, include=F, cache=T, dependson='runmap'>>=
+mean.run <- calculateDstats(data = ACSS_South_Danger_forAnalysis, seed = 565465, plotOut = F, 
+                            transform = "None", average = T,useMice = F,calcTrends = F,modelType = "lm" )
+
+mean.run_area <- calculateDstats(data = ACSS_South_Danger_forAnalysis, seed = 565465, plotOut = F, 
+                            transform = "None", average = T,useMice = F,calcTrends = F,modelType = "lm", useArea = T )
+
+@
+
+<<leverage-calc, include=F, eval=F, dependson='sesa-mean-runs'>>=
+
+var(mean.run$aucRatio)
+site.influence <- function(Site,  data.in, mean.estimates, transformation = 'None') {
+  require(dplyr)
+  data.yr.site <- filter(data.in, Site.Code != Site)
+  # if(nrow(filter(data.in, Site.Code == Site & Year == Year.of.choice)) == 0) {return( NA)} else{
+  aucResults <- calculateDstats(data.yr.site, 123456, 
+                            plotOut = FALSE,  
+                            transform=transformation, 
+                            calcTrends = FALSE, 
+                            average = TRUE, 
+                            useMice = FALSE,  
+                            modelType = "lm") %>% left_join(mean.estimates, by = "Year") %>%
+    mutate(SqDiff = (aucRatio.x - aucRatio.y)^2)
+  # print(aucResults$Sq)
+  out.df <-   dplyr::select(aucResults, Year, SqDiff, aucRatio.x, aucRatio.y) %>% 
+    rename(ratio.out= aucRatio.x, ratio.in=aucRatio.y, influence=SqDiff) %>% mutate(Site.Code = Site)
+  return(out.df) 
+  #data.frame("Site.Code" = Site, "influence" = sum(aucResults$SqDiff, na.rm=T)))
+}
+test.run <- site.influence(data.in = ACSS_South_Danger_forAnalysis, 
+                           Site = "45.63_-64.81", mean.estimates = mean.run)
+
+
+sites <- unique(ACSS_South_Danger_forAnalysis$Site.Code)
+influence.results <- map_df(sites, site.influence,data.in = ACSS_South_Danger_forAnalysis, 
+                            mean.estimates = mean.run)  %>% 
+  left_join(danger_site, by = "Site.Code")
+
+write_rds(influence.results , ".rds/leverage.rds")
+@
+
+
+<<results-sesa>>=
+# This should be the analysis sequence for using the mean counts and then bootstrapping the results.
+AUC.results <- calculateNewDataAnalysis(ACSS_South_Danger_forAnalysis, covars = covars,
+                                        outlier = 1995)
+mean.run <- calculateDstats(ACSS_South_Danger_forAnalysis, average = T, seed = 1283) 
+
+# print(AUC.results)
+
+@
+
+
+<<run-bootstrap, eval=F>>=
+AUC.results.w.bootstrap.raw <- boot::boot(ACSS_South_Danger_forAnalysis, 
+                                          statistic = boot.fun,
+                                          R = 1000, dataTransform = "None") 
+write_rds(AUC.results.w.bootstrap.raw, ".rds/BootstrapRaw.rds")
+@
+
+<<run-boot2, eval=F>>=
+
+boots <- bootstraps(ACSS_South_Danger_forAnalysis, 1000)
+
+PMDsOut <- boots %>%
+  mutate(pmds = map(splits, ~calculateDstats( data = analysis(.x), plotOut = F, transform = "None", average = T, seed = 565465))) %>% unnest(cols = c(id, pmds)) %>% dplyr::select(-splits)
+
+write_rds(PMDsOut, ".rds/BootstrapRaw_Aug2019.rds")
+@
+
+
+
+<<bootstrap-out>>=
+AUC.results.w.bootstrap.raw <- read_rds(".rds/BootstrapRaw_Aug2019.rds")
+yrs_st <- ACSS_South_Danger_forAnalysis %>%  
+        dplyr::filter(Year %in% yrs.w.lg & Year != 1995) %>% 
+                   mutate(Yr.st = arm::rescale(Year)) %>%
+                   dplyr::select(Year, Yr.st) %>% distinct
+
+
+# auc.res.boot <- map_df(1:1000, return_aug)  %>% group_by(Year) %>%
+#       mutate(uci = quantile(dat, 0.975, na.rm=T),
+#         lci = quantile(dat, 0.025, na.rm=T)) %>% ungroup
+
+auc.res.boot <- AUC.results.w.bootstrap.raw %>% 
+                  dplyr::filter(Year %in% yrs.w.lg & Year != 1995) %>%
+                  left_join(yrs_st, by = "Year") %>% group_by(id) %>%
+                  nest %>%
+                  mutate(mods = purrr::map(data,~lm(aucRatio~Yr.st, data = .) ),
+                         aug = purrr::map2(mods, data, broom::augment)) %>%
+                  dplyr::select(id, aug) %>%
+                  unnest(cols = c(aug)) %>%
+                  group_by(Year) %>%
+                   mutate(uci = quantile(aucRatio, 0.975, na.rm=T),
+        lci = quantile(aucRatio, 0.025, na.rm=T)) %>% ungroup
+
+# 
+
+quantile_means <- quantile(auc.res.boot$aucRatio, c(0.025,0.975))
+# lmres.boot <- do.call('rbind', auc.res.boot)
+lmres.ci <- auc.res.boot %>% group_by(Year) %>% dplyr::filter(!is.na(.fitted)) %>% 
+  summarize(
+  uci = quantile(.fitted, 0.975),
+  lci = quantile(.fitted, 0.025)) %>% left_join(AUC.results$AUC, by = "Year")
+
+# print(lmres.ci)
+
+baseline <- broom::augment(AUC.results$models$`Year linear`, AUC.results$AUC) 
+
+mc_sim <- read_rds(".rds/montecarlo_sim.rds")
+labs_ = list("uniformBirds" = "Site\nMatching", 
+  "areaMatchingBirds"="Area\nMatching",
+  "dangerMatchingBirds"= "Safe Area\nMatching",
+  "hurdleBirds"= "Safety\nAggregation",
+  "aggDanger" = "Danger\nAggregation",
+  "aggMid" = "Intermediate\nAggregation")
+mc_sim_sum <- mc_sim$montecarloADM  %>% group_by(col) %>% 
+    summarize(med = median(aucRatio, na.rm=T),
+      lci = quantile(aucRatio, 0.025, na.rm=T),
+      uci = quantile(aucRatio, 0.975, na.rm=T)) %>% 
+    mutate(labels = labs_[col]
+      ) %>% unnest
+@
+
+
+<<run-assumption-relaxation-models, include=F, eval=F>>=
+source('../Rscripts/testassumptions.r', chdir=F) 
+yearModels <- pmap_df(assumptions_df, test_assumption, 
+	dat = acss_dat %>% filter(YearCollected!=2016) %>% 
+	bind_rows(acss_dat2 %>% select(-Family)))
+write_rds(yearModels, ".rds/assumptionrelaxation.rds")
+@
+
+
+<<aic-res>>=
+lm_trends <- list(AUC.results$models$`Quad Year`, AUC.results$models$`Log Year linear`, AUC.results$models$`Year linear`, AUC.results$models$`No Trend`)
+yr_lin_tidy <-  broom::tidy(AUC.results$models$`Year linear`, conf.int=T)
+
+names(lm_trends) <- c('Quadratic','Log Linear', "Linear", 'None')
+
+AicRes <- tibble(trend = names(lm_trends), 
+  AIC = sapply(lm_trends, bbmle::AIC ), 
+                 K = sapply(lm_trends, function(x) length(names(coef(x))) + 1),
+                N = sapply(lm_trends, nobs),
+                r2 = sapply(lm_trends, function(x) summary(x)$r.squared),
+                loglik = sapply(lm_trends, logLik)) %>% 
+          arrange(AIC) %>%
+            mutate(AICc = AIC + (  (2*(K)*(K+1))/(N - K -1) ),
+                   dAICc = AICc - min(AICc),
+                   logSup = exp(-0.5*dAICc),
+                   w  = logSup / sum(logSup)) 
+
+AicRes$r2 <- c(NA, AicRes$r2 %>% unlist() )
+@
+
+
+<<binning-res-out>>=
+# binningResults <- readRDS("../Rscripts/rds_files/fullBinningResults.rds") 
+# Not run here, but can run using function described in Chapter 4 of thesis
+# binitres <- binTest(0.1,55500,ACSS_South_Danger, 1000,1,only.w.lg = T) 
+br <- read_rds(".rds/binningRes.rds")
+binningResults <- br$df%>%
+    # filter(round(seed,2) == 11517.47) %>%
+    # lm(aucRatio~yr_centered, data = .) %>%
+    # broom::tidy(., conf.int = T) %>% 
+    select(int, slope, uci, lci, uci_int, lci_int) %>%
+    unite("(Intercept)", int, lci_int, uci_int)%>%
+    unite("Yr.st", slope, lci, uci)%>%
+    pivot_longer(c("(Intercept)","Yr.st"), names_to = "term", values_to = "est") %>% 
+    separate(est, into = c("estimate", "2.5 %","97.5 %"), sep = "_", convert = T) %>%
+    mutate(runName = "Binned_Sites")#,
+      # `97.5 %` = conf.high,
+      # `2.5 %` = conf.low)
+@

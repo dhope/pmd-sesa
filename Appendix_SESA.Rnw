@@ -1,0 +1,136 @@
+<<parent-sesa-app, include=F>>=
+set_parent("HopeLankSmithPaquetYdenberg_SESA.Rnw")
+
+opts_chunk$set(echo = F, # Do NOT repeat code in final document
+                message = F, # Do NOT print R messages in document
+                warning = F, # Do NOT pring warnings
+                cache = T, # Cache runs
+                fig.pos = '!htb', 
+                dev = "pdf"#"CairoPNG" # Uses Cairo png instead of pdf for images
+             )
+select <- dplyr::select
+unloadNamespace("maps")
+map <- purrr::map
+@
+
+<<calc-values, cache=F>>=
+yrs <- AUC.results$AUC$Year %>% unique
+glm_danger <- glm(proportionDanger~area_km, data = danger_site, family = gaussian('log'))
+coefs_ <-  coef(glm_danger)
+sd_error <- sd(residuals(glm_danger))
+
+calc_D = function(x, useR = FALSE)  max(0,exp(x*coefs_[[2]] + coefs_[[1]] + ifelse(useR, rnorm(1, 0, sd_error), 0)))
+
+
+glm_A <- glm(area_km~proportionDanger, data = danger_site, family = gaussian('log'))
+coefs_A <-  coef(glm_A)
+sd_errorA <- sd(residuals(glm_A))
+calc_A <- function(x, useR = FALSE)  exp(x*coefs_A[[2]] + coefs_A[[1]]) + ifelse(useR, rnorm(length(x), 0, sd_errorA), 0) 
+fulcalc <- function(x, ur =FALSE){
+  a <- calc_A(x, ur)
+  while (a <= 0) {
+    a <- calc_A(x, ur)
+  }
+  return(a)
+} 
+require(tidyverse)
+source("../Rscripts/simulation_functions.r")   
+# plot_grid(explotsall, simPlotcompare, nrow=2, rel_heights = c(0.4,0.9), rel_widths = c(0.7,1),align = 'v')
+source('../Rscripts/runandplot.r')
+@
+
+
+<<baseline-pmd-ex, include=F>>=
+seeds <- seq(1,1000)
+test.df <- simulation(pars, T)
+montecarloADM <- map_df(seeds, randomSim,  pars = pars,  runs =c('uniformBirds', 'areaMatchingBirds', 'dangerMatchingBirds',
+	'hurdleBirds','aggDanger','aggMid'))#c("areaMatchingBirds", "dangerMatchingBirds" ) )
+	
+baselineRes <- test.df$results %>% filter(!col %in% c('betaBirds', 'normalBirds')) %>% 
+	  mutate(grp = factor(col, levels = c('aggDanger','uniformBirds', 
+	         	'aggMid', 
+	         	'areaMatchingBirds', 
+	         	'dangerMatchingBirds',
+	         	'hurdleBirds')))
+# write_rds(list(test.df = test.df, montecarloADM = montecarloADM, baselineRes = baselineRes), ".rds/montecarlo_sim.rds")
+
+source("../Rscripts/Plots_ex_for_WHSG.r") 
+print(test.df$results) 
+@
+
+
+
+
+<<random-sim, include=F>>=
+seeds <- seq(1,1000)
+	montycarlo <- map_df(seeds, randomSim, pars = pars)
+	mnMC <- mean(montycarlo$aucRatio)
+	
+	
+@
+
+
+<<dist-ex-plot, fig.scap="",fig.pos = '!htb',  fig.cap= "Simulations of birds across 30 sites using different distribution types. Distributions are described in text. Red line shows the baseline estimate of the PMD index for each distribution when site safety is sequentially assigned while the grey dots show the variation in the index when site safety is randomized. Points are jittered on the horizontal axis to aid in visualization. Above the points are examples of each distribution type showing sites arranged from dangerous to safe (left to right) and site abundance increasing vertically.">>=
+simPlotcompare <- 
+	ggplot(montecarloADM %>% 
+	         mutate(grp = factor(col, levels =  c('aggDanger','uniformBirds', 
+	         	'aggMid', 
+	         	'areaMatchingBirds', 
+	         	'dangerMatchingBirds',
+	         	'hurdleBirds'))), 
+	       aes(grp, aucRatio)) + geom_jitter(width = 0.2, height = 0, alpha = 0.05) +
+	geom_hline(yintercept = 1, linetype = 'dashed')+
+	  # scale_x_discrete(labels = c("Uniform", "Area Matching", "Danger Matching", "Hurdle"))+
+	  scale_x_discrete(labels = c("Danger\nAggregation", "Site\nMatching",
+	  	"Intermediate\nAggregation", "Area\nMatching", "Safe Area\nMatching", "Safety\nAggregation")) +
+	   labs(x = "", y = "Priority Matching Distributions index") + 
+  geom_errorbar(data = baselineRes, width = 0.5, aes(ymin = aucRatio, #Distribution
+	                                                               ymax = aucRatio), colour = 'red') #+
+	  # theme(axis.text=element_text(size=24), text=element_text(size=16))
+
+plot_grid(explotsall, simPlotcompare, nrow=2, rel_heights = c(0.4,0.9), rel_widths = c(1.1,1),align = 'v')
+@
+
+
+<<calc-shift, eval=F, include =F>>=
+df_res <- 
+  expand.grid(r =  seq(0.05, 0.99, by = 0.01),
+              seed = runif(100,0,1000000)) %>% 
+  mutate(SafetyPMD =  map2_dbl(r,seed, ~rsp_PMD(.x, 0.9 ,.y)),
+         PropPMD = map2_dbl(r,seed, ~rsp_PMD(0.8,.x ,.y)))
+range_res <- broom::augment(AUC.results$models$`Year linear`) %>% .[['.fitted']] %>% range
+# diff(range_res)
+p1 <- 
+  ggplot(df_res ,#%>% filter(SafetyPMD < 1 | PropPMD < 1), 
+         aes(1-r, SafetyPMD, group = seed)) + 
+  stat_summary(aes(group = 1),geom='line', fun.y='mean') +
+  scale_y_continuous(limits = c(0.19, 0.4)) +
+  geom_vline(xintercept = 1-0.8) +
+  geom_hline(yintercept = mean(AUC.results$AUC$aucRatio),
+             linetype= 2) +
+  annotate(geom = "text",
+           x = 0.29,alpha= 1,
+           y = 0.4, #colour = 'blue',
+           label = "90% of birds found at a given\npercentage of safest sites") +
+  labs(x="", y ="PMD") +
+  geom_hline(yintercept = range_res, linetype =2, colour  = 'red')
+
+p2 <- 
+  ggplot(df_res ,#%>% filter(SafetyPMD < 1 | PropPMD < 1), 
+         aes(1-r, SafetyPMD, group = seed)) + 
+  stat_summary(aes(x=r,y=PropPMD, group = 1),colour = 'blue',
+               geom='line', fun.y='mean') +
+  scale_y_continuous(limits = c(0.19, 0.4)) +
+  geom_vline(xintercept = 0.9) +
+  geom_hline(yintercept = mean(AUC.results$AUC$aucRatio),
+             linetype= 2) +
+  annotate(geom = "text",
+           x = 0.835,alpha= 1,
+           y = 0.4, colour = 'blue',
+           label = "Proportion of birds\nin 20% of safest sites") +
+  labs(x="", y ="PMD") +
+  geom_hline(yintercept = range_res, linetype =2, colour  = 'red')
+
+
+plot_grid(p1, p2, nrow = 2)
+@
